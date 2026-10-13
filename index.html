@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>荒原嘉年华 · 四驱越野</title>
+<style>
+  :root { --pink: #ff2d8a; --cyan: #2de2ff; --violet: #9b5cff; --gold: #ffc83d; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d14; color: #fff;
+    font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; user-select: none; }
+  #app canvas { display: block; }
+  .hidden { display: none !important; }
+  #hud > * { position: fixed; pointer-events: none; }
+  #minimap { left: 22px; bottom: 22px; width: 220px; height: 220px; }
+  #speedo { right: 22px; bottom: 16px; width: 220px; height: 220px; }
+  #race { left: 22px; top: 20px; min-width: 240px; padding: 10px 20px 12px;
+    background: linear-gradient(135deg, rgba(14,16,30,.8), rgba(14,16,30,.45)); border-left: 4px solid var(--pink); transform: skewX(-8deg); }
+  #race > * { transform: skewX(8deg); }
+  #raceName { font-size: 13px; letter-spacing: 3px; color: var(--cyan); font-weight: bold; }
+  #raceCp { font-size: 18px; font-weight: bold; }
+  #raceTime { font-size: 42px; font-weight: 900; font-style: italic; line-height: 1.1; }
+  #raceBest { font-size: 14px; opacity: .75; }
+  #skillTotal { right: 22px; top: 20px; font-size: 13px; letter-spacing: 2px; padding: 6px 16px;
+    background: linear-gradient(135deg, rgba(14,16,30,.45), rgba(14,16,30,.8)); border-right: 4px solid var(--cyan); transform: skewX(-8deg); }
+  #skillTotal b { font-size: 22px; font-style: italic; margin-left: 8px; letter-spacing: 0; }
+  #skill { left: 50%; top: 18px; transform: translateX(-50%); text-align: center; min-width: 320px; }
+  .sk-head { font-style: italic; font-weight: 900; text-shadow: 0 2px 12px rgba(0,0,0,.55); line-height: 1; }
+  #skMult { font-size: 30px; color: var(--gold); margin-right: 12px; }
+  #skPts { font-size: 44px; }
+  .sk-bar { height: 4px; background: rgba(255,255,255,.22); margin: 6px auto 6px; width: 280px; }
+  .sk-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--pink)); }
+  .sk-item { font-size: 16px; font-weight: bold; font-style: italic; opacity: .8; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+  .sk-item.new { font-size: 21px; color: var(--cyan); opacity: 1; }
+  .sk-item b { color: var(--gold); }
+  #toasts { left: 50%; top: 168px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .toast { padding: 7px 22px; background: linear-gradient(90deg, rgba(255,45,138,.9), rgba(155,92,255,.88)); font-weight: bold; font-style: italic;
+    font-size: 18px; transform: skewX(-10deg); white-space: nowrap; box-shadow: 0 4px 18px rgba(0,0,0,.3); }
+  .toast b { font-size: 22px; }
+  .toast.lost { background: rgba(40,10,16,.88); color: #ff8494; }
+  .toast s { opacity: .6; }
+  .toast.cp { background: linear-gradient(90deg, rgba(20,160,200,.92), rgba(45,226,255,.8)); color: #04151c; }
+  .toast.pr { background: linear-gradient(90deg, rgba(255,200,61,.96), rgba(255,122,26,.92)); color: #1c1204; font-size: 20px; }
+  #prompt { left: 50%; bottom: 96px; transform: translateX(-50%); padding: 10px 26px; background: rgba(14,16,30,.78);
+    border: 2px solid var(--pink); font-size: 20px; font-weight: bold; white-space: nowrap; }
+  #prompt .dim { opacity: .65; font-size: 15px; margin-left: 10px; }
+  kbd { display: inline-block; min-width: 28px; padding: 1px 8px; margin: 0 4px; border-radius: 4px; background: #fff; color: #111;
+    font-family: inherit; font-weight: 900; text-align: center; font-style: normal; }
+  #keys { left: 50%; bottom: 12px; transform: translateX(-50%); font-size: 13px; opacity: .7; text-shadow: 0 1px 3px #000; white-space: nowrap; }
+  #center { position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); pointer-events: none; font-weight: 900; font-style: italic;
+    text-align: center; text-shadow: 0 6px 30px rgba(0,0,0,.5); opacity: 0; white-space: nowrap; }
+  #center .count { font-size: 170px; }
+  #center .go { color: var(--gold); }
+  #center .msg { font-size: 46px; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+  #title { align-items: flex-start; padding-left: 6vw; background: linear-gradient(90deg, rgba(10,12,24,.78) 0%, rgba(10,12,24,.45) 38%, rgba(10,12,24,0) 62%); }
+  #title h1 { font-size: 92px; font-style: italic; font-weight: 900; margin: 0; letter-spacing: 8px;
+    background: linear-gradient(90deg, var(--pink), var(--violet), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 6px 22px rgba(0,0,0,.5)); }
+  #title .sub { font-size: 20px; letter-spacing: 10px; margin-top: 2px; text-shadow: 0 2px 10px #000; }
+  .controls { margin-top: 30px; display: grid; grid-template-columns: auto auto; gap: 8px 22px; font-size: 16px;
+    background: rgba(10,12,24,.6); padding: 16px 30px; border-left: 4px solid var(--cyan); }
+  .controls span:nth-child(odd) { text-align: right; font-weight: bold; color: var(--cyan); }
+  .press { margin-top: 28px; font-size: 22px; font-weight: bold; animation: blink 1.4s infinite; text-shadow: 0 2px 8px #000; }
+  @keyframes blink { 50% { opacity: .35; } }
+  #pause, #results { background: rgba(8,10,20,.55); }
+  .panel { background: linear-gradient(135deg, rgba(20,22,40,.94), rgba(20,22,40,.78)); padding: 26px 40px; border-left: 6px solid var(--pink); min-width: 440px; }
+  .panel h2 { margin: 0 0 14px; font-size: 38px; font-style: italic; }
+  .panel .controls { margin-top: 10px; }
+  .stat { display: flex; justify-content: space-between; align-items: baseline; font-size: 20px; margin: 8px 0; gap: 40px; }
+  .stat b { font-style: italic; font-size: 28px; }
+  .newbest { color: var(--gold); }
+  .hint { margin-top: 18px; font-size: 16px; opacity: .9; }
+  #loading { background: #0b0d14; font-size: 22px; letter-spacing: 6px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="hud" class="hidden">
+  <canvas id="minimap" width="440" height="440"></canvas>
+  <canvas id="speedo" width="440" height="440"></canvas>
+  <div id="race" class="hidden"><div id="raceName"></div><div id="raceCp"></div><div id="raceTime"></div><div id="raceBest"></div></div>
+  <div id="skillTotal">技巧分<b id="skTotal">0</b></div>
+  <div id="skill" class="hidden">
+    <div class="sk-head"><span id="skMult">x1</span><span id="skPts">0</span></div>
+    <div class="sk-bar"><i id="skBar"></i></div>
+    <div id="skList"></div>
+  </div>
+  <div id="toasts"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="keys">W/S 油门·刹车倒车 &nbsp; A/D 转向 &nbsp; 空格 手刹漂移 &nbsp; R 复位 &nbsp; C 视角 &nbsp; M 静音 &nbsp; Esc 菜单</div>
+</div>
+<div id="center"></div>
+
+<div id="title" class="overlay hidden">
+  <h1>荒原嘉年华</h1>
+  <div class="sub">WILDLAND FESTIVAL · 四驱越野</div>
+  <div class="controls">
+    <span>W / ↑</span><span>油门（空中压低车头）</span>
+    <span>S / ↓</span><span>刹车 · 倒车（空中抬起车头）</span>
+    <span>A D / ← →</span><span>转向</span>
+    <span>空格</span><span>手刹 · 甩尾漂移</span>
+    <span>R</span><span>回到赛道</span>
+    <span>C</span><span>切换视角</span>
+    <span>E</span><span>在光圈内开始比赛</span>
+    <span>Esc</span><span>暂停菜单</span>
+  </div>
+  <div class="press">按任意键出发</div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2>暂停</h2>
+    <div class="controls">
+      <span>W / ↑</span><span>油门</span>
+      <span>S / ↓</span><span>刹车 · 倒车</span>
+      <span>A D / ← →</span><span>转向</span>
+      <span>空格</span><span>手刹漂移</span>
+      <span>R</span><span>回到赛道</span>
+      <span>C</span><span>切换视角</span>
+      <span>M</span><span>静音</span>
+    </div>
+    <div class="hint"><kbd>Esc</kbd> 继续 <span id="pauseQuit"> &nbsp; <kbd>Q</kbd> 退出比赛</span></div>
+  </div>
+</div>
+
+<div id="results" class="overlay hidden"></div>
+<div id="loading" class="overlay">生成荒原中…</div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/core.js"></script>
+<script src="js/post.js"></script>
+<script src="js/terrain.js"></script>
+<script src="js/vehicle.js"></script>
+<script src="js/atv.js"></script>
+<script src="js/world.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/game.js"></script>
+<script src="js/debug.js"></script>
+<script>Game.init();</script>
+</body>
+</html>
